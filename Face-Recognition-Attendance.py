@@ -5,7 +5,7 @@ import threading
 import time
 
 # Define the base directory for known faces and imagesqq
-image_path_base = r'C:\Users\yshsh\Pictures\Face_Recognition'
+image_path_base = os.path.dirname(os.path.abspath(__file__))
 known_faces_dir = os.path.join(image_path_base, 'known_faces')
 
 # Create a directory to store the known faces if it doesn't exist

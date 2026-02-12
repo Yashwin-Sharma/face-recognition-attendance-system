@@ -18,7 +18,7 @@ frame_lock = threading.Lock()
 
 def add_face(name):
     """Capture an image and save the face encoding."""
-    image_path = os.path.join(image_path_base, f"{name}.jpg")
+    image_path = os.path.join(known_faces_dir, f"{name}.jpg")
 
     # Open the camera and capture an image
     cap = cv2.VideoCapture(0)
@@ -140,4 +140,5 @@ def main():
             print("Invalid input. Please type 'yes' or 'no'.")
 
 if __name__ == "__main__":
+
     main()

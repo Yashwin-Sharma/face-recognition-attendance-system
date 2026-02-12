@@ -56,3 +56,7 @@ pip install -r requirements.txt
 ##Run the program
 
 python face_recognition_attendance.py
+
+## Projektbeschreibung (Deutsch)
+
+Dieses Projekt wurde eigenständig entwickelt, um ein Gesichtserkennungssystem zur automatischen Anwesenheitserfassung zu realisieren. Dabei wurden Multithreading, Optimierung der Bildverarbeitung und strukturierte Dateiverwaltung umgesetzt.

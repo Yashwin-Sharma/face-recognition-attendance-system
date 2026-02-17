@@ -1,144 +1,217 @@
-import face_recognition
-import cv2
 import os
+import cv2
+import numpy as np
+import face_recognition
+import datetime
 import threading
 import time
 
-# Define the base directory for known faces and imagesqq
-image_path_base = os.path.dirname(os.path.abspath(__file__))
-known_faces_dir = os.path.join(image_path_base, 'known_faces')
 
-# Create a directory to store the known faces if it doesn't exist
-if not os.path.exists(known_faces_dir):
-    os.makedirs(known_faces_dir)
+# PROJECT PATH SETUP (Portable)
 
-# Global variable to store the current frame for recognition
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+KNOWN_FACES_DIR = os.path.join(BASE_DIR, "known_faces")
+ATTENDANCE_FILE = os.path.join(BASE_DIR, "attendance.csv")
+
+if not os.path.exists(KNOWN_FACES_DIR):
+    os.makedirs(KNOWN_FACES_DIR)
+
+
+# GLOBAL VARIABLES
+
+
 current_frame = None
 frame_lock = threading.Lock()
+recognized_today = set()
+
+
+# ADD NEW FACE
+
 
 def add_face(name):
-    """Capture an image and save the face encoding."""
-    image_path = os.path.join(known_faces_dir, f"{name}.jpg")
-
-    # Open the camera and capture an image
     cap = cv2.VideoCapture(0)
-    print("Press 's' to take a picture...")
-    while True:
-        ret, frame = cap.read()
-        cv2.imshow('Capture Image', frame)
-        if cv2.waitKey(1) & 0xFF == ord('s'):
-            cv2.imwrite(image_path, frame)
-            print(f"Image saved as {image_path}")
-            break
-    cap.release()
-    cv2.destroyAllWindows()
+    print("Press 's' to capture image")
 
-    # Load the image and encode it
-    image = face_recognition.load_image_file(image_path)
-    encoding = face_recognition.face_encodings(image)[0]
-
-    # Save the encoding and name in a file
-    with open(f"{known_faces_dir}/{name}.txt", "w") as f:
-        f.write(",".join(map(str, encoding)))
-    print(f"Face for {name} added successfully.")
-
-def capture_frame():
-    """Capture frames from the camera."""
-    global current_frame
-    cap = cv2.VideoCapture(0)
-    
     while True:
         ret, frame = cap.read()
         if not ret:
-            print("Failed to capture frame.")
+            print("Failed to capture image.")
             break
-        with frame_lock:
-            current_frame = frame  # Store the current frame
-        cv2.imshow('Camera Feed', frame)
-        if cv2.waitKey(1) & 0xFF == ord('q'):  # Press 'q' to quit
+
+        cv2.imshow("Capture Face", frame)
+
+        if cv2.waitKey(1) & 0xFF == ord('s'):
+            image_path = os.path.join(KNOWN_FACES_DIR, f"{name}.jpg")
+            cv2.imwrite(image_path, frame)
+            print(f"Image saved: {image_path}")
             break
 
     cap.release()
     cv2.destroyAllWindows()
 
-def recognize_faces():
-    """Recognize faces in the captured frames."""
+    # Encode face
+    image = face_recognition.load_image_file(image_path)
+    encodings = face_recognition.face_encodings(image)
+
+    if len(encodings) == 0:
+        print("No face detected. Try again.")
+        return
+
+    encoding = encodings[0]
+
+    encoding_file = os.path.join(KNOWN_FACES_DIR, f"{name}.npy")
+    np.save(encoding_file, encoding)
+
+    print(f"Face encoding saved for {name}")
+
+
+# LOAD KNOWN FACES
+
+
+def load_known_faces():
+    encodings = []
+    names = []
+
+    for file in os.listdir(KNOWN_FACES_DIR):
+        if file.endswith(".npy"):
+            path = os.path.join(KNOWN_FACES_DIR, file)
+            encoding = np.load(path)
+            encodings.append(encoding)
+            names.append(file.replace(".npy", ""))
+
+    return encodings, names
+
+
+# MARK ATTENDANCE
+
+
+def mark_attendance(name):
+    file_exists = os.path.isfile(ATTENDANCE_FILE)
+
+    with open(ATTENDANCE_FILE, "a") as f:
+        if not file_exists:
+            f.write("Name,Date,Time\n")
+
+        now = datetime.datetime.now()
+        date_str = now.strftime("%Y-%m-%d")
+        time_str = now.strftime("%H:%M:%S")
+
+        f.write(f"{name},{date_str},{time_str}\n")
+
+
+# CAPTURE CAMERA FRAMES
+
+
+def capture_frames():
     global current_frame
-    print("Starting face recognition. Press 'q' to quit.")
-    
-    known_encodings = {}
-    for filename in os.listdir(known_faces_dir):
-        if filename.endswith('.txt'):
-            with open(os.path.join(known_faces_dir, filename), "r") as f:
-                encoding = list(map(float, f.read().strip().split(',')))
-                known_encodings[filename[:-4]] = encoding  # Store name without .txt extension
+    cap = cv2.VideoCapture(0)
 
-    frame_skip = 5  # Process every 5th frame (increase if needed)
-    frame_count = 0
+    while True:
+        ret, frame = cap.read()
+        if not ret:
+            break
 
-    last_recognized_name = None  # Variable to track the last recognized name
+        with frame_lock:
+            current_frame = frame.copy()
+
+        cv2.imshow("Camera", frame)
+
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
+
+    cap.release()
+    cv2.destroyAllWindows()
+
+
+# FACE RECOGNITION LOGIC
+
+
+def recognize_faces():
+    global current_frame
+
+    known_encodings, known_names = load_known_faces()
+
+    if len(known_encodings) == 0:
+        print("No known faces found.")
+        return
+
+    print("Starting recognition. Press 'q' to quit.")
 
     while True:
         with frame_lock:
             if current_frame is None:
-                continue  # Skip if no frame is available
+                continue
 
-            # Resize the frame for faster processing (adjust this as needed)
-            small_frame = cv2.resize(current_frame, (0, 0), fx=0.5, fy=0.5)  # Reduce to 50% of original size
-            rgb_frame = cv2.cvtColor(small_frame, cv2.COLOR_BGR2RGB)
+            frame = current_frame.copy()
 
-            # Process every nth frame
-            frame_count += 1
-            if frame_count % frame_skip == 0:
-                # Find all face locations and encodings in the current frame
-                face_locations = face_recognition.face_locations(rgb_frame)
-                face_encodings = face_recognition.face_encodings(rgb_frame, face_locations)
+        small_frame = cv2.resize(frame, (0, 0), fx=0.5, fy=0.5)
+        rgb_small_frame = cv2.cvtColor(small_frame, cv2.COLOR_BGR2RGB)
 
-                for (top, right, bottom, left), face_encoding in zip(face_locations, face_encodings):
-                    # Compare with known faces
-                    matches = face_recognition.compare_faces(list(known_encodings.values()), face_encoding)
-                    name = "Not Recognized"
+        face_locations = face_recognition.face_locations(rgb_small_frame)
+        face_encodings = face_recognition.face_encodings(rgb_small_frame, face_locations)
 
-                    # If a match was found, use the first one
-                    if True in matches:
-                        first_match_index = matches.index(True)
-                        name = list(known_encodings.keys())[first_match_index]
+        for (top, right, bottom, left), face_encoding in zip(face_locations, face_encodings):
 
-                    # Draw a box around the face and label it
-                    # Scale back up the face locations since the frame we detected in was scaled down
-                    top *= 2
-                    right *= 2
-                    bottom *= 2
-                    left *= 2
+            name = "Unknown"
 
-                    cv2.rectangle(current_frame, (left, top), (right, bottom), (0, 255, 0), 2)
-                    cv2.putText(current_frame, name, (left, top - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2)
+            face_distances = face_recognition.face_distance(known_encodings, face_encoding)
+            best_match_index = np.argmin(face_distances)
 
-                    # Check if the recognized name has changed
-                    if name != last_recognized_name:
-                        print(f"Face recognized: {name}")  # Notify in console
-                        last_recognized_name = name  # Update the last recognized name
+            # Strict threshold (more accurate)
+            if face_distances[best_match_index] < 0.45:
+                name = known_names[best_match_index]
 
-        time.sleep(0.05)  # Slight delay to control processing rate
+            # Scale coordinates back
+            top *= 2
+            right *= 2
+            bottom *= 2
+            left *= 2
+
+            cv2.rectangle(frame, (left, top), (right, bottom), (0, 255, 0), 2)
+            cv2.putText(frame, name, (left, top - 10),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2)
+
+            if name != "Unknown" and name not in recognized_today:
+                print(f"Attendance marked for {name}")
+                mark_attendance(name)
+                recognized_today.add(name)
+
+        cv2.imshow("Recognition", frame)
+
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
+
+        time.sleep(0.1)
+
+    cv2.destroyAllWindows()
+
+
+# MAIN FUNCTION
+
 
 def main():
     while True:
-        action = input("Would you like to add a new face? (yes/no): ").strip().lower()
-        if action == 'yes':
-            name = input("Enter the name of the person: ")
+        choice = input("Add new face? (yes/no): ").strip().lower()
+
+        if choice == "yes":
+            name = input("Enter name: ").strip()
             add_face(name)
-        elif action == 'no':
-            print("Starting camera capture and recognition...")
-            # Start threads for capturing frames and recognizing faces
-            threading.Thread(target=capture_frame, daemon=True).start()
+
+        elif choice == "no":
+            threading.Thread(target=capture_frames, daemon=True).start()
             threading.Thread(target=recognize_faces, daemon=True).start()
+
             while True:
                 if cv2.waitKey(1) & 0xFF == ord('q'):
-                    break  # Exit the recognition loop
+                    break
             break
+
         else:
-            print("Invalid input. Please type 'yes' or 'no'.")
+            print("Invalid input. Type yes or no.")
+
 
 if __name__ == "__main__":
 
     main()
+

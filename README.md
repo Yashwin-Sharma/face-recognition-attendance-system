@@ -28,7 +28,14 @@ requirements.txt
 
 ## ▶ How to Run
 
-Install dependencies:
+1. Clone the repository
 
-pip install -r requirements.txt
+2. Install dependencies:
+
+   pip install -r requirements.txt
+
+3. Run the program:
+
+   python Face_Recognition_Attendance.py
+
 

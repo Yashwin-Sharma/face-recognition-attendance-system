@@ -1,62 +1,34 @@
 # Face Recognition Attendance System
 
-This project is a Python-based face recognition system that automatically captures and recognizes faces using a webcam.
+A Python-based real-time face recognition attendance system using OpenCV and face_recognition library.
 
-It allows adding new faces dynamically and stores their encodings for future recognition.
+## 🚀 Features
 
----
-
-## Project Features
-
+- Add new faces dynamically using webcam
+- Encodes and stores faces for future recognition
 - Real-time face detection and recognition
-- Add new faces using webcam capture
-- Stores face encodings in text files
-- Multithreading for parallel frame capture and recognition
-- Frame skipping optimization for better performance
-- Automatic creation of required folders
+- Automatic attendance marking in CSV format
+- Prevents duplicate attendance entries
+- Portable project structure (no hardcoded paths)
 
----
+## 🛠 Technologies Used
 
-## Technologies Used
-
-- Python
-- OpenCV (cv2)
+- Python 3
+- OpenCV
 - face_recognition
-- threading module
-- os module
+- NumPy
+- Threading
 
----
+## 📂 Project Structure
 
-## How It Works
+Face_Recognition_Attendance.py  
+known_faces/  
+attendance.csv  
+requirements.txt  
 
-1. The program captures frames from the webcam.
-2. Face encodings are generated using the face_recognition library.
-3. Encodings are saved in `.txt` files inside the `known_faces` folder.
-4. During recognition, stored encodings are compared with live camera frames.
-5. Recognized faces are labeled in real time.
+## ▶ How to Run
 
----
-
-## Installation
-
-1. Clone the repository:
-
-git clone https://github.com/Yashwin-Sharma/face-recognition-attendance-system.git
-
-2. Navigate into the project folder:
-
-cd face-recognition-attendance-system
-
-3. Install required libraries:
+Install dependencies:
 
 pip install -r requirements.txt
 
----
-
-##Run the program
-
-python face_recognition_attendance.py
-
-## Projektbeschreibung (Deutsch)
-
-Dieses Projekt wurde eigenständig entwickelt, um ein Gesichtserkennungssystem zur automatischen Anwesenheitserfassung zu realisieren. Dabei wurden Multithreading, Optimierung der Bildverarbeitung und strukturierte Dateiverwaltung umgesetzt.

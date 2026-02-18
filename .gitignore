@@ -1,0 +1,18 @@
+# Python cache
+__pycache__/
+*.pyc
+
+# Virtual environments
+.venv/
+env/
+venv/
+
+# Attendance file (generated automatically)
+attendance.csv
+
+# Known faces folder (optional - if don't want real data public)
+known_faces/
+
+# OS files
+.DS_Store
+Thumbs.db

@@ -89,6 +89,16 @@ Yashwin,2026-02-17,20:28:57
 
 ---
 
+## 📸 Demo
+
+### Camera Feed
+![Camera Demo](camera_screenshot.png)
+
+### Attendance Output
+![Attendance Demo](attendance.csv_screenshot.png)
+
+---
+
 ## 👨‍💻 Author
 
 **Yashwin Kumar Sharma**  
